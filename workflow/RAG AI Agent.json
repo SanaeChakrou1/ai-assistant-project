@@ -1,0 +1,304 @@
+{
+  "name": "RAG AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}\n{{ $json.filePrompt }}",
+        "options": {
+          "systemMessage": "You are a helpful AI assistant. You can engage in general conversations, answer questions, help with various tasks, and when provided with images, analyze them thoroughly. Be conversational, helpful, and adapt to whatever the user needs assistance with.",
+          "passthroughBinaryImages": true
+        }
+      },
+      "id": "fa548890-f36d-4c23-84a2-eb634e4a280b",
+      "name": "RAG AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        -128,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a9a245e-f1a1-4282-bb02-a81ffe629f0f",
+              "name": "chatInput",
+              "value": "={{ $json?.chatInput || $json.body.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "b80831d8-c653-4203-8706-adedfdb98f77",
+              "name": "sessionId",
+              "value": "={{ $json?.sessionId || $json.body.sessionId}}",
+              "type": "string"
+            },
+            {
+              "id": "f0d21a52-89a1-412b-8cce-672b20a839aa",
+              "name": "filePrompt",
+              "value": "={{ $json?.filePrompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a3b1484a-75ae-4f28-a867-6e52e1a9bf18",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-agent",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "e9fb53ce-fc41-41a7-8e2b-f1739907011f",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -64
+      ],
+      "webhookId": "67fc16e5-4a6d-4c00-b7a1-db48c4511e9f",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XbRrAXyB4PaTIJAo",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ { \"output\": $json.output || $json.text || JSON.stringify($json) } }}",
+        "options": {}
+      },
+      "id": "e6a93b1f-d619-403a-b05a-4c599fbccfd8",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        80
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        208
+      ],
+      "id": "f84fb958-7ffd-4827-be0f-6b199d785626",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input data from webhook\nconst inputData = items[0].json;\n\n// Handle both direct properties and nested body\nconst chatInput = inputData.chatInput || inputData.body?.chatInput || \"\";\nconst imageBase64 = inputData.image || inputData.body?.image;\nconst userText = chatInput || \"Hello\";\n\n// Check if we have image data\nif (!imageBase64) {\n  return [{\n    json: {\n      chatInput: userText,\n      sessionId: inputData.sessionId || inputData.body?.sessionId || \"default\",\n      filePrompt: \"\" // Keep empty for text-only conversations\n    }\n  }];\n}\n\ntry {\n  // Convert Base64 to binary (remove data URL prefix if present)\n  const base64Data = imageBase64.replace(/^data:image\\/[a-z]+;base64,/, '');\n  const binaryData = Buffer.from(base64Data, 'base64');\n  \n  // Create the prompt for vision analysis\n  const prompt = `${userText}\\n\\nPlease analyze the provided image and give a detailed response.`;\n  \n  return [{\n    json: {\n      chatInput: prompt,\n      sessionId: inputData.sessionId || inputData.body?.sessionId || \"default\",\n      filePrompt: \"\",\n      hasImage: true\n    },\n    binary: {\n      data: {\n        data: binaryData,\n        mimeType: \"image/jpeg\",\n        fileName: \"uploaded_image.jpg\"\n      }\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: \"Failed to process image: \" + error.message,\n      chatInput: userText,\n      sessionId: inputData.sessionId || inputData.body?.sessionId || \"default\",\n      filePrompt: \"\"\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        112
+      ],
+      "id": "80467995-cb63-4791-a6ed-2be27aaaf467",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-2024-05-13",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-2024-05-13"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        752
+      ],
+      "id": "d7c11fa3-58eb-4549-839d-7393f6c37172",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "YDTF0oXhfYYdlPQi",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        160
+      ],
+      "id": "b912bd6a-9ec3-4afb-bb52-fc51e7e004ab",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "giBLev9jWmFnBKoX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1024,
+        -304
+      ],
+      "id": "d2f8ad02-feba-4df7-a844-e40099b8d553",
+      "name": "When chat message received",
+      "webhookId": "24b310aa-c3a9-41ba-8e1d-782fbf355597"
+    }
+  ],
+  "pinData": {
+    "Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "python-requests/2.32.3",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "connection": "keep-alive",
+            "authorization": "Bearer my_super_secret_token_123",
+            "content-type": "application/json",
+            "content-length": "115"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "chatInput": "hi",
+            "sessionId": "75cd13d1-ea91-4f90-a01a-a95c660e5e2c",
+            "timestamp": "2025-09-22T22:47:06.165336"
+          },
+          "webhookUrl": "http://localhost:5678/webhook/ai-agent",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "RAG AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "RAG AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RAG AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "fc1ec3e9-832a-41ad-b2cd-7111bd042db9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00e39fe8405b8dff1819d8458c96024c59febe103fff7451435e3328b4a2741b"
+  },
+  "id": "VUDJqLXKxBiq74l6",
+  "tags": []
+}
