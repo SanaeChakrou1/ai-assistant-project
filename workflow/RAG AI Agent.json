@@ -121,31 +121,6 @@
     },
     {
       "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "gpt-4o-2024-05-13",
-          "mode": "list",
-          "cachedResultName": "gpt-4o-2024-05-13"
-        },
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        240,
-        752
-      ],
-      "id": "d7c11fa3-58eb-4549-839d-7393f6c37172",
-      "name": "OpenAI Chat Model",
-      "credentials": {
-        "openAiApi": {
-          "id": "YDTF0oXhfYYdlPQi",
-          "name": "OpenAi account 4"
-        }
-      }
-    },
-    {
-      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
@@ -259,11 +234,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        []
       ]
     },
     "Google Gemini Chat Model": {
